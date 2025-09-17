@@ -20,11 +20,6 @@ const getStyles = () => ({
     font-family: Open Sans;
     position: relative;
   `,
-  svg: css`
-    position: absolute;
-    top: 0;
-    left: 0;
-  `,
 });
 
 export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, width, height }) => {
@@ -200,10 +195,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         `
       )}
     >
-      {/* Keep a visible circle to satisfy existing e2e test */}
-      <svg width={50} height={50} className={styles.svg} viewBox={`0 0 50 50`}>
-        <circle data-testid="simple-panel-circle" r={20} cx={25} cy={25} fill="#33a2e5" />
-      </svg>
       <div
         className={css`
           display: flex;
