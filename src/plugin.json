@@ -4,8 +4,8 @@
   "name": "Mqtt-Panel",
   "id": "mihnea-mqtt-panel",
   "info": {
-    "keywords": ["panel"],
-    "description": "",
+    "keywords": ["panel", "mqtt", "control", "websocket"],
+    "description": "Subscribe and publish MQTT messages over WebSockets from Grafana.",
     "author": {
       "name": "Mihnea"
     },
