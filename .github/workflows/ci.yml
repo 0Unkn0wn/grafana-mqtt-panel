@@ -134,7 +134,7 @@ jobs:
     needs: build
     if: ${{ needs.build.outputs.has-e2e == 'true' }}
     outputs:
-      matrix: ${{ steps.resolve-versions.outputs.matrix }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -144,6 +144,18 @@ jobs:
       - name: Resolve Grafana E2E versions
         id: resolve-versions
         uses: grafana/plugin-actions/e2e-version@main # zizmor: ignore[unpinned-uses] provided by grafana
+        continue-on-error: true
+
+      - name: Set matrix (with fallback)
+        id: set-matrix
+        shell: bash
+        run: |
+          DEFAULT_MATRIX='[{"NAME":"grafana-enterprise","VERSION":"12.1.1","name":"Enterprise"}]'
+          if [ "${{ steps.resolve-versions.outcome }}" = "success" ] && [ -n "${{ steps.resolve-versions.outputs.matrix }}" ]; then
+            echo "matrix=${{ steps.resolve-versions.outputs.matrix }}" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=$DEFAULT_MATRIX" >> $GITHUB_OUTPUT
+          fi
 
   playwright-tests:
     needs: [resolve-versions, build]
