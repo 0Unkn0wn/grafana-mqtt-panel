@@ -146,16 +146,21 @@ jobs:
         uses: grafana/plugin-actions/e2e-version@main # zizmor: ignore[unpinned-uses] provided by grafana
         continue-on-error: true
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Set matrix (with fallback)
         id: set-matrix
         shell: bash
         run: |
           DEFAULT_MATRIX='[{"NAME":"grafana-enterprise","VERSION":"12.1.1","name":"Enterprise"}]'
-          if [ "${{ steps.resolve-versions.outcome }}" = "success" ] && [ -n "${{ steps.resolve-versions.outputs.matrix }}" ]; then
-            echo "matrix=${{ steps.resolve-versions.outputs.matrix }}" >> $GITHUB_OUTPUT
+          RES="${{ steps.resolve-versions.outputs.matrix }}"
+          if [ "${{ steps.resolve-versions.outcome }}" = "success" ] && [ -n "$RES" ] && echo "$RES" | jq -e . >/dev/null 2>&1; then
+            MATRIX=$(echo "$RES" | jq -c .)
           else
-            echo "matrix=$DEFAULT_MATRIX" >> $GITHUB_OUTPUT
+            MATRIX=$DEFAULT_MATRIX
           fi
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
   playwright-tests:
     needs: [resolve-versions, build]
