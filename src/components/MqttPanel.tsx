@@ -87,7 +87,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     } catch {
       setConnected(false);
     }
-  }, [options, subscribeTopic]);
+  }, [options, subscribeTopic, queryExpr]);
 
   useEffect(() => {
     connectClient();
@@ -102,13 +102,28 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       setFirstReceived(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.mqttProtocol, options.mqttServer, options.mqttServerPort, options.mqttAuth, options.mqttUser, options.mqttPassword, options.mqttTopicSubscribe]);
+  }, [
+    options.mqttProtocol,
+    options.mqttServer,
+    options.mqttServerPort,
+    options.mqttAuth,
+    options.mqttUser,
+    options.mqttPassword,
+    options.mqttTopicSubscribe,
+    options.mqttTopicQuery,
+  ]);
 
   const publish = useCallback(
     (out: any) => {
-      if (!clientRef.current || !connected) return;
-      if (!publishTopic) return;
-      if (options.receiveOnly) return;
+      if (!clientRef.current || !connected) {
+        return;
+      }
+      if (!publishTopic) {
+        return;
+      }
+      if (options.receiveOnly) {
+        return;
+      }
       if (!firstReceived) {
         setFirstReceived(true);
         return;
