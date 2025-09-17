@@ -28,6 +28,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   const [connected, setConnected] = useState(false);
   const [firstReceived, setFirstReceived] = useState(false);
   const [value, setValue] = useState<any>('');
+  const [lastError, setLastError] = useState<string | null>(null);
   const clientRef = useRef<MqttClient | null>(null);
 
   const subscribeTopic = options.mqttTopicSubscribe?.trim();
@@ -36,7 +37,9 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
 
   const connectClient = useCallback(() => {
     try {
-      const url = `${options.mqttProtocol}://${options.mqttServer}:${options.mqttServerPort}`;
+  const path = (options.mqttWebsocketPath || '').trim();
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const url = `${options.mqttProtocol}://${options.mqttServer}:${options.mqttServerPort}${normalizedPath}`;
       const opts: IClientOptions = {};
       if (options.mqttAuth === 'BasicAuth' && options.mqttUser) {
         opts.username = options.mqttUser;
@@ -45,10 +48,20 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         }
       }
       const c = mqtt.connect(url, opts);
-      c.on('connect', () => setConnected(true));
+      c.on('connect', () => {
+        setConnected(true);
+        setLastError(null);
+      });
       c.on('reconnect', () => setConnected(false));
       c.on('close', () => setConnected(false));
-      c.on('error', () => setConnected(false));
+      c.on('error', (err: any) => {
+        setConnected(false);
+        try {
+          setLastError(String(err?.message || err) || 'Connection error');
+        } catch {
+          setLastError('Connection error');
+        }
+      });
       c.on('message', (_topic: string, payload: any) => {
         setFirstReceived(true);
         let message: any = payload.toString();
@@ -79,8 +92,13 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         c.subscribe(subscribeTopic);
       }
       clientRef.current = c;
-    } catch {
+    } catch (e: any) {
       setConnected(false);
+      try {
+        setLastError(String(e?.message || e));
+      } catch {
+        setLastError('Connection init error');
+      }
     }
   }, [options, subscribeTopic, queryExpr]);
 
@@ -101,6 +119,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     options.mqttProtocol,
     options.mqttServer,
     options.mqttServerPort,
+    options.mqttWebsocketPath,
     options.mqttAuth,
     options.mqttUser,
     options.mqttPassword,
@@ -204,6 +223,16 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         `}
       >
         <Badge color={connected ? 'green' : 'red'} text={connected ? 'Connected' : 'Disconnected'} />
+        {lastError && (
+          <span
+            className={css`
+              color: #b54; opacity: 0.8;
+            `}
+            title={lastError}
+          >
+            {lastError}
+          </span>
+        )}
         {subscribeTopic && <span className={css`opacity:0.7;`}>Sub: {subscribeTopic}</span>}
         {publishTopic && <span className={css`opacity:0.7;`}>Pub: {publishTopic}</span>}
       </div>

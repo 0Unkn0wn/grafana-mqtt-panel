@@ -106,6 +106,12 @@ export const plugin = new PanelPlugin<SimpleOptions>(MqttPanel).setPanelOptions(
         defaultValue: 9001,
       })
       .addTextInput({
+        path: 'mqttWebsocketPath',
+        name: 'WebSocket path',
+        description: 'For Mosquitto often /mqtt; leave empty if broker uses root /',
+        defaultValue: '/mqtt',
+      })
+      .addTextInput({
         path: 'mqttTopicSubscribe',
         name: 'Subscribe topic',
         defaultValue: 'grafana/mqtt-panel',

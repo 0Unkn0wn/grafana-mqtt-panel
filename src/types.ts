@@ -7,6 +7,7 @@ export interface MqttOptions {
   mqttProtocol: 'ws' | 'wss';
   mqttServer: string;
   mqttServerPort: number;
+  mqttWebsocketPath: string;
   mqttTopicSubscribe: string;
   mqttTopicPublish: string;
   mqttTopicQuery: string; // JSONata expression
