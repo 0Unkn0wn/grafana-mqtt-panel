@@ -29,7 +29,11 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   const [firstReceived, setFirstReceived] = useState(false);
   const [value, setValue] = useState<any>('');
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastSent, setLastSent] = useState<string | null>(null);
+  const [lastReceived, setLastReceived] = useState<string | null>(null);
+  const [echoed, setEchoed] = useState<boolean>(false);
   const clientRef = useRef<MqttClient | null>(null);
+  const lastSentRef = useRef<string | null>(null);
 
   const subscribeTopic = options.mqttTopicSubscribe?.trim();
   const publishTopic = options.mqttTopicPublish?.trim();
@@ -62,9 +66,10 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
           setLastError('Connection error');
         }
       });
-      c.on('message', (_topic: string, payload: any) => {
+      c.on('message', (topic: string, payload: any) => {
         setFirstReceived(true);
-        let message: any = payload.toString();
+        const raw = payload?.toString?.() ?? String(payload);
+        let message: any = raw;
         if (queryExpr) {
           try {
             const obj = JSON.parse(message);
@@ -72,6 +77,10 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
             const res = expr.evaluate(obj);
             message = res ?? '';
           } catch {}
+        }
+        setLastReceived(String(message));
+        if (topic && publishTopic && topic === publishTopic) {
+          setEchoed(lastSentRef.current != null && raw === lastSentRef.current);
         }
         switch (options.mode) {
           case 'Switch': {
@@ -101,6 +110,10 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       }
     }
   }, [options, subscribeTopic, queryExpr]);
+
+  useEffect(() => {
+    lastSentRef.current = lastSent;
+  }, [lastSent]);
 
   useEffect(() => {
     connectClient();
@@ -143,15 +156,37 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         return;
       }
       try {
-        clientRef.current.publish(publishTopic, String(out));
+        const outStr = String(out);
+        setLastSent(outStr);
+        setEchoed(false);
+        clientRef.current.publish(publishTopic, outStr);
       } catch {}
     },
     [connected, publishTopic, firstReceived, options.receiveOnly]
   );
 
   const control = useMemo(() => {
+        {lastError && (
+          <span
+            className={css`
+              color: #b54; opacity: 0.8;
+            `}
+            title={lastError}
+          >
+            {lastError}
+          </span>
+        )}
     switch (options.mode) {
       case 'Text':
+        {lastSent !== null && (
+          <span className={css`opacity:0.8;`}>Sent: {lastSent.length > 60 ? `${lastSent.slice(0, 60)}…` : lastSent}</span>
+        )}
+        {lastReceived !== null && (
+          <span className={css`opacity:0.8;`}>
+            Recv: {lastReceived.length > 60 ? `${lastReceived.slice(0, 60)}…` : lastReceived}{' '}
+            {echoed && '✓'}
+          </span>
+        )}
         return (
           <InlineFieldRow>
             <InlineField label="Value">
