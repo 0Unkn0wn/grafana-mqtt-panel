@@ -109,7 +109,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         setLastError('Connection init error');
       }
     }
-  }, [options, subscribeTopic, queryExpr]);
+  }, [options, subscribeTopic, queryExpr, publishTopic]);
 
   useEffect(() => {
     lastSentRef.current = lastSent;
@@ -166,27 +166,8 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   );
 
   const control = useMemo(() => {
-        {lastError && (
-          <span
-            className={css`
-              color: #b54; opacity: 0.8;
-            `}
-            title={lastError}
-          >
-            {lastError}
-          </span>
-        )}
     switch (options.mode) {
       case 'Text':
-        {lastSent !== null && (
-          <span className={css`opacity:0.8;`}>Sent: {lastSent.length > 60 ? `${lastSent.slice(0, 60)}…` : lastSent}</span>
-        )}
-        {lastReceived !== null && (
-          <span className={css`opacity:0.8;`}>
-            Recv: {lastReceived.length > 60 ? `${lastReceived.slice(0, 60)}…` : lastReceived}{' '}
-            {echoed && '✓'}
-          </span>
-        )}
         return (
           <InlineFieldRow>
             <InlineField label="Value">
@@ -270,6 +251,16 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         )}
         {subscribeTopic && <span className={css`opacity:0.7;`}>Sub: {subscribeTopic}</span>}
         {publishTopic && <span className={css`opacity:0.7;`}>Pub: {publishTopic}</span>}
+        {lastSent !== null && (
+          <span className={css`opacity:0.8;`}>
+            Sent: {lastSent.length > 60 ? `${lastSent.slice(0, 60)}…` : lastSent}
+          </span>
+        )}
+        {lastReceived !== null && (
+          <span className={css`opacity:0.8;`}>
+            Recv: {lastReceived.length > 60 ? `${lastReceived.slice(0, 60)}…` : lastReceived} {echoed && '✓'}
+          </span>
+        )}
       </div>
       {control}
     </div>
