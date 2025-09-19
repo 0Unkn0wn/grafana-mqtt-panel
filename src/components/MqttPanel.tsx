@@ -23,7 +23,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   const styles = useStyles2(getStyles);
 
   const [connected, setConnected] = useState(false);
-  const [firstReceived, setFirstReceived] = useState(false);
   const [value, setValue] = useState<any>('');
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
@@ -97,7 +96,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         log('error', String(err?.message || err));
       });
       c.on('message', (topic: string, payload: any) => {
-        setFirstReceived(true);
         const raw = payload?.toString?.() ?? String(payload);
         let message: any = raw;
         if (queryExpr) {
@@ -165,7 +163,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         clientRef.current = null;
       }
       setConnected(false);
-      setFirstReceived(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
