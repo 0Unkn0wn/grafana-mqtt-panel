@@ -119,12 +119,14 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
             setValue(String(message) === onVal);
             break;
           }
-          case 'Text':
           case 'Slider': {
             setValue(message);
             break;
           }
+          case 'Text':
           case 'Button':
+          default:
+            // Do not overwrite the Text input or Button value on incoming messages
             break;
         }
       });
