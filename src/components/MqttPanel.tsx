@@ -191,10 +191,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       if (options.receiveOnly) {
         return;
       }
-      if (!firstReceived) {
-        setFirstReceived(true);
-        return;
-      }
       try {
         const outStr = String(out);
         setLastSent(outStr);
@@ -203,7 +199,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         log('publish', { topic: publishTopic, payload: outStr });
       } catch {}
     },
-    [connected, publishTopic, firstReceived, options.receiveOnly, log]
+    [connected, publishTopic, options.receiveOnly, log]
   );
 
   const control = useMemo(() => {
