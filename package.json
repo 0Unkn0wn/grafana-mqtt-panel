@@ -11,7 +11,8 @@
     "lint:fix": "pnpm run lint --fix && prettier --write --list-different .",
     "e2e": "playwright test",
     "server": "docker compose up --build",
-    "sign": "npx --yes @grafana/sign-plugin@latest"
+    "sign": "npx --yes @grafana/sign-plugin@latest",
+    "release": "git add -A && git commit -m 'chore: release' || true && pnpm version patch && git push origin HEAD --follow-tags"
   },
   "author": "Mihnea",
   "license": "Apache-2.0",

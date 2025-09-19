@@ -4,12 +4,9 @@ import { SimpleOptions } from 'types';
 import { css, cx } from '@emotion/css';
 import { useStyles2, Button, InlineField, InlineFieldRow, Input, Slider, Switch, Badge } from '@grafana/ui';
 import { PanelDataErrorView } from '@grafana/runtime';
-// Avoid Node typings requirement in TS tools
 declare const require: any;
-// Types are `any` because we load the browser bundle of mqtt
 type IClientOptions = any;
 type MqttClient = any;
-// Use browser build to avoid Node polyfills
 const mqtt: any = require('mqtt/dist/mqtt.min.js');
 const jsonata: any = require('jsonata');
 
@@ -38,12 +35,37 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   const subscribeTopic = options.mqttTopicSubscribe?.trim();
   const publishTopic = options.mqttTopicPublish?.trim();
   const queryExpr = options.mqttTopicQuery?.trim();
+  const showMeta = options.showMeta !== false;
+
+  const log = useCallback(
+    (kind: string, payload?: any) => {
+      if (options.logToConsole) {
+        try {
+          // eslint-disable-next-line no-console
+          console.log('[mqtt-panel]', kind, payload ?? '');
+        } catch {}
+      }
+      if (options.logToNetwork && options.logEndpoint) {
+        try {
+          const body = JSON.stringify({ t: Date.now(), kind, payload });
+          const navAny: any = typeof navigator !== 'undefined' ? (navigator as any) : undefined;
+          if (navAny && typeof navAny.sendBeacon === 'function') {
+            navAny.sendBeacon(options.logEndpoint, new Blob([body], { type: 'application/json' }));
+          } else if (typeof fetch === 'function') {
+            fetch(options.logEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
+          }
+        } catch {}
+      }
+    },
+    [options.logToConsole, options.logToNetwork, options.logEndpoint]
+  );
 
   const connectClient = useCallback(() => {
     try {
-  const path = (options.mqttWebsocketPath || '').trim();
-  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
-  const url = `${options.mqttProtocol}://${options.mqttServer}:${options.mqttServerPort}${normalizedPath}`;
+      const path = (options.mqttWebsocketPath || '').trim();
+      const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+      const url = `${options.mqttProtocol}://${options.mqttServer}:${options.mqttServerPort}${normalizedPath}`;
+      log('connect', { url, subscribeTopic, publishTopic });
       const opts: IClientOptions = {};
       if (options.mqttAuth === 'BasicAuth' && options.mqttUser) {
         opts.username = options.mqttUser;
@@ -55,9 +77,16 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       c.on('connect', () => {
         setConnected(true);
         setLastError(null);
+        log('connected');
       });
-      c.on('reconnect', () => setConnected(false));
-      c.on('close', () => setConnected(false));
+      c.on('reconnect', () => {
+        setConnected(false);
+        log('reconnect');
+      });
+      c.on('close', () => {
+        setConnected(false);
+        log('close');
+      });
       c.on('error', (err: any) => {
         setConnected(false);
         try {
@@ -65,6 +94,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         } catch {
           setLastError('Connection error');
         }
+        log('error', String(err?.message || err));
       });
       c.on('message', (topic: string, payload: any) => {
         setFirstReceived(true);
@@ -82,6 +112,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         if (topic && publishTopic && topic === publishTopic) {
           setEchoed(lastSentRef.current != null && raw === lastSentRef.current);
         }
+        log('message', { topic, raw, message, echoed: topic === publishTopic && lastSentRef.current != null && raw === lastSentRef.current });
         switch (options.mode) {
           case 'Switch': {
             const onVal = String(options.model.onValue);
@@ -98,7 +129,13 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         }
       });
       if (subscribeTopic) {
-        c.subscribe(subscribeTopic);
+        c.subscribe(subscribeTopic, (err?: any) => {
+          if (err) {
+            log('subscribe_error', { topic: subscribeTopic, err: String(err?.message || err) });
+          } else {
+            log('subscribed', { topic: subscribeTopic });
+          }
+        });
       }
       clientRef.current = c;
     } catch (e: any) {
@@ -108,8 +145,9 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       } catch {
         setLastError('Connection init error');
       }
+      log('connect_init_error', String(e?.message || e));
     }
-  }, [options, subscribeTopic, queryExpr, publishTopic]);
+  }, [options, subscribeTopic, queryExpr, publishTopic, log]);
 
   useEffect(() => {
     lastSentRef.current = lastSent;
@@ -160,9 +198,10 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         setLastSent(outStr);
         setEchoed(false);
         clientRef.current.publish(publishTopic, outStr);
+        log('publish', { topic: publishTopic, payload: outStr });
       } catch {}
     },
-    [connected, publishTopic, firstReceived, options.receiveOnly]
+    [connected, publishTopic, firstReceived, options.receiveOnly, log]
   );
 
   const control = useMemo(() => {
@@ -249,20 +288,27 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
             {lastError}
           </span>
         )}
-        {subscribeTopic && <span className={css`opacity:0.7;`}>Sub: {subscribeTopic}</span>}
-        {publishTopic && <span className={css`opacity:0.7;`}>Pub: {publishTopic}</span>}
-        {lastSent !== null && (
-          <span className={css`opacity:0.8;`}>
-            Sent: {lastSent.length > 60 ? `${lastSent.slice(0, 60)}…` : lastSent}
-          </span>
-        )}
-        {lastReceived !== null && (
-          <span className={css`opacity:0.8;`}>
-            Recv: {lastReceived.length > 60 ? `${lastReceived.slice(0, 60)}…` : lastReceived} {echoed && '✓'}
-          </span>
-        )}
+        {showMeta && subscribeTopic && <span className={css`opacity:0.7;`}>Sub: {subscribeTopic}</span>}
+        {showMeta && publishTopic && <span className={css`opacity:0.7;`}>Pub: {publishTopic}</span>}
       </div>
       {control}
+      {showMeta && (
+        <div
+          className={css`
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 8px;
+          `}
+        >
+          <div className={css`opacity:0.8;`}>
+            <strong>Sent:</strong> {lastSent != null ? (lastSent.length > 120 ? `${lastSent.slice(0, 120)}…` : lastSent) : '—'}
+          </div>
+          <div className={css`opacity:0.8;`}>
+            <strong>Recv:</strong> {lastReceived != null ? (lastReceived.length > 120 ? `${lastReceived.slice(0, 120)}…` : lastReceived) : '—'} {echoed && '✓'}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

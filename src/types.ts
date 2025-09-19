@@ -15,6 +15,10 @@ export interface MqttOptions {
   mqttUser?: string;
   mqttPassword?: string;
   receiveOnly: boolean;
+  showMeta?: boolean;
+  logToConsole?: boolean;
+  logToNetwork?: boolean;
+  logEndpoint?: string;
 }
 
 export interface SimpleOptions extends MqttOptions {

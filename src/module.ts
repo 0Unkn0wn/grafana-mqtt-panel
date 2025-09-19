@@ -155,5 +155,28 @@ export const plugin = new PanelPlugin<SimpleOptions>(MqttPanel).setPanelOptions(
         name: 'Receive only (disable publish)',
         defaultValue: false,
       })
+      .addBooleanSwitch({
+        path: 'showMeta',
+        name: 'Show topics + Sent/Recv rows',
+        defaultValue: true,
+      })
+      .addBooleanSwitch({
+        path: 'logToConsole',
+        name: 'Log MQTT traffic to console',
+        description: 'Print connect, publish, and received messages to the browser console',
+        defaultValue: false,
+      })
+      .addBooleanSwitch({
+        path: 'logToNetwork',
+        name: 'Send MQTT logs to endpoint',
+        defaultValue: false,
+      })
+      .addTextInput({
+        path: 'logEndpoint',
+        name: 'Log endpoint URL',
+        description: 'POST JSON logs here when enabled',
+        defaultValue: '/__mqtt_log__',
+        showIf: (v) => v.logToNetwork,
+      })
   );
 });
