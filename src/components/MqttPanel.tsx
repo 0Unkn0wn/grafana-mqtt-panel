@@ -163,110 +163,164 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     options.mqttTopicQuery,
   ]);
 
-  const publish = useCallback(
-    (out: any) => {
-      if (!clientRef.current || !connected) {
-        return;
-      }
-      if (!publishTopic) {
-        return;
-      }
-      if (options.receiveOnly) {
-        return;
-      }
-      try {
-        const outStr = String(out);
-        setLastSent(outStr);
-        setEchoed(false);
-        clientRef.current.publish(publishTopic, outStr);
-        log('publish', { topic: publishTopic, payload: outStr });
-      } catch {}
-    },
-    [connected, publishTopic, options.receiveOnly, log]
-  );
+  // Stage a value and publish only on click (no auto-publish on change)
+  const [stagedValue, setStagedValue] = useState<string | number | boolean>('');
 
-  const control = useMemo(() => {
+  // Seed defaults whenever mode/config changes
+  useEffect(() => {
+    switch (options.mode) {
+      case 'Text':
+        setStagedValue('');
+        break;
+      case 'Slider': {
+        const min = Number(options.model?.minValue ?? 0);
+        const def = options.model?.defaultValue != null ? Number(options.model.defaultValue) : min;
+        setStagedValue(def);
+        break;
+      }
+      case 'Switch': {
+        const def = Boolean(options.model?.default ?? false);
+        setStagedValue(def);
+        break;
+      }
+      case 'Button':
+      default:
+        // Button uses payload from options; nothing to stage
+        break;
+    }
+  }, [
+    options.mode,
+    options.model?.minValue,
+    options.model?.defaultValue,
+    options.model?.default,
+  ]);
+
+  // IMPORTANT: Do not overwrite stagedValue from incoming messages.
+  // Ensure your on('message') handler only updates meta (lastReceived/echo) and NOT stagedValue.
+  const publish = useCallback(() => {
+    if (!clientRef.current || !connected || !options.publishTopic || options.receiveOnly) return;
+
+    let payload: string;
+
+    switch (options.mode) {
+      case 'Text': {
+        const v = typeof stagedValue === 'string' ? stagedValue : String(stagedValue);
+        payload = v;
+        break;
+      }
+      case 'Slider': {
+        payload = String(Number(stagedValue));
+        break;
+      }
+      case 'Switch': {
+        const onVal = options.model?.onValue ?? '1';
+        const offVal = options.model?.offValue ?? '0';
+        payload = Boolean(stagedValue) ? String(onVal) : String(offVal);
+        break;
+      }
+      case 'Button':
+      default: {
+        // Button payload comes from panel options (no input field in the panel)
+        const btn = options.model?.buttonValue ?? options.button?.value ?? '1';
+        payload = String(btn);
+        break;
+      }
+    }
+
+    log('publish', { topic: options.publishTopic, payload });
+    clientRef.current.publish(options.publishTopic, payload, {
+      qos: options.qos ?? 0,
+      retain: options.retain ?? false,
+    });
+    setLastSent(payload);
+    setEchoed(false);
+  }, [
+    clientRef,
+    connected,
+    options.publishTopic,
+    options.receiveOnly,
+    options.mode,
+    stagedValue,
+    options.model?.onValue,
+    options.model?.offValue,
+    options.model?.buttonValue,
+    options.button?.value,
+    options.qos,
+    options.retain,
+    log,
+  ]);
+
+  const controls = useMemo(() => {
     switch (options.mode) {
       case 'Text':
         return (
           <InlineFieldRow>
             <InlineField label="Value">
-              <Input width={30} value={value ?? ''} onChange={(e) => setValue(e.currentTarget.value)} />
+              <Input
+                width={30}
+                value={typeof stagedValue === 'string' ? stagedValue : String(stagedValue)}
+                onChange={(e) => setStagedValue(e.currentTarget.value)}
+              />
             </InlineField>
-            <Button onClick={() => publish(value)} disabled={!connected || !publishTopic}>
-              {options.model.text || options.text || 'Send'}
+            <Button onClick={publish} disabled={!connected || !options.publishTopic}>
+              {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
+
       case 'Slider': {
-        const min = Number(options.model.minValue) ?? 0;
-        const max = Number(options.model.maxValue) ?? 100;
-        const step = Number(options.model.step) ?? 1;
-        const current = value === '' || value == null ? (Number.isFinite(min) ? min : 0) : Number(value);
+        const min = Number(options.model?.minValue ?? 0);
+        const max = Number(options.model?.maxValue ?? 100);
+        const step = Number(options.model?.step ?? 1);
+        const current = Number(stagedValue);
         return (
           <InlineFieldRow>
-            <InlineField label={`${options.model.text || 'Value'}: ${current}`} grow>
+            <InlineField label={`${options.model?.text || 'Value'}: ${current}`} grow>
               <Slider
                 min={min}
                 max={max}
                 step={step}
                 value={current}
-                onChange={(v) => {
-                  // Stage only; do not auto-publish
-                  setValue(v);
-                }}
+                onChange={(v) => setStagedValue(v)}
               />
             </InlineField>
-            <Button onClick={() => publish(current)} disabled={!connected || !publishTopic}>
-              {options.model.text || options.text || 'Send'}
+            <Button onClick={publish} disabled={!connected || !options.publishTopic}>
+              {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
       }
+
       case 'Switch': {
-        const checked = Boolean(value);
+        const checked = Boolean(stagedValue);
         return (
           <InlineFieldRow>
-            <InlineField label={options.model.text || options.text || 'Toggle'}>
+            <InlineField label={options.model?.text || options.text || 'Toggle'}>
               <Switch
                 value={checked}
-                onChange={(e) => {
-                  // Stage only; do not auto-publish
-                  setValue(e.currentTarget.checked);
-                }}
+                onChange={(e) => setStagedValue(e.currentTarget.checked)}
               />
             </InlineField>
-            <Button
-              onClick={() => {
-                const out = (Boolean(value) ? options.model.onValue : options.model.offValue) ?? '';
-                publish(out);
-              }}
-              disabled={!connected || !publishTopic}
-            >
-              {options.model.text || options.text || 'Send'}
+            <Button onClick={publish} disabled={!connected || !options.publishTopic}>
+              {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
       }
+
       case 'Button':
-      default:
+      default: {
+        // Single button; payload is configured in panel options (options.model.buttonValue)
         return (
           <InlineFieldRow>
-            <InlineField label="Payload">
-              <Input
-                width={30}
-                placeholder="Button payload"
-                value={value ?? ''}
-                onChange={(e) => setValue(e.currentTarget.value)}
-              />
-            </InlineField>
-            <Button onClick={() => publish(value)} disabled={!connected || !publishTopic}>
-              {options.model.text || options.text || 'Send'}
+            <Button onClick={publish} disabled={!connected || !options.publishTopic}>
+              {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
+      }
     }
-  }, [options, publish, value, connected, publishTopic]);
+  }, [options.mode, options.model, options.text, stagedValue, connected, options.publishTopic, publish]);
 
   if (data.series.length === 0) {
     return <PanelDataErrorView fieldConfig={fieldConfig} panelId={id} data={data} needsStringField />;
@@ -305,7 +359,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         {showMeta && subscribeTopic && <span className={css`opacity:0.7;`}>Sub: {subscribeTopic}</span>}
         {showMeta && publishTopic && <span className={css`opacity:0.7;`}>Pub: {publishTopic}</span>}
       </div>
-      {control}
+      {controls}
       {showMeta && (
         <div
           className={css`
