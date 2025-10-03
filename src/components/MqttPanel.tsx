@@ -60,6 +60,15 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
 
   const connectClient = useCallback(() => {
     try {
+      // Tear down any previous client before reconnecting
+      if (clientRef.current) {
+        try {
+          clientRef.current.removeAllListeners?.();
+          clientRef.current.end(true);
+        } catch {}
+        clientRef.current = null;
+      }
+
       const path = (options.mqttWebsocketPath || '').trim();
       const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
       const url = `${options.mqttProtocol}://${options.mqttServer}:${options.mqttServerPort}${normalizedPath}`;
@@ -143,6 +152,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     return () => {
       if (clientRef.current) {
         try {
+          clientRef.current.removeAllListeners?.();
           clientRef.current.end(true);
         } catch {}
         clientRef.current = null;
@@ -360,16 +370,6 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
           `}
         >
           <div className={css`opacity:0.8;`}>
-            <strong>Sent:</strong> {lastSent != null ? (lastSent.length > 120 ? `${lastSent.slice(0, 120)}…` : lastSent) : '—'}
-          </div>
-          <div className={css`opacity:0.8;`}>
-            <strong>Recv:</strong> {lastReceived != null ? (lastReceived.length > 120 ? `${lastReceived.slice(0, 120)}…` : lastReceived) : '—'} {echoed && '✓'}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
             <strong>Sent:</strong> {lastSent != null ? (lastSent.length > 120 ? `${lastSent.slice(0, 120)}…` : lastSent) : '—'}
           </div>
           <div className={css`opacity:0.8;`}>
