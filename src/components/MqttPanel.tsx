@@ -204,7 +204,9 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   ]);
 
   const publish = useCallback(() => {
-    if (!clientRef.current || !connected || !publishTopic || options.receiveOnly) return;
+    if (!clientRef.current || !connected || !publishTopic || options.receiveOnly) {
+      return;
+    }
 
     let payload: string;
 
