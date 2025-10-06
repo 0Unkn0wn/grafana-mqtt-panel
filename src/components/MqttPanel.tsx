@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PanelProps } from '@grafana/data';
 import { SimpleOptions } from 'types';
 import { css, cx } from '@emotion/css';
-import { useStyles2, Button, InlineFieldRow, Input, Slider, Switch, Badge } from '@grafana/ui';
+import { useStyles2, Button, InlineFieldRow, InlineField, Input, Slider, Switch, Badge } from '@grafana/ui';
 import { PanelDataErrorView } from '@grafana/runtime';
 declare const require: any;
 type IClientOptions = any;
