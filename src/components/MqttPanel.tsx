@@ -208,7 +208,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
   const mode = options.mode;
   const onValue = options.model?.onValue;
   const offValue = options.model?.offValue;
-  const buttonValue = (options as any).model?.buttonValue ?? (options as any).buttonValue; // optional custom button payload
+  const buttonValue = options.model?.buttonValue; // payload for Button mode (default handled in publish)
 
   const publish = useCallback(() => {
     if (!clientRef.current || !connected || !publishTopic || receiveOnly) {

@@ -33,5 +33,6 @@ export interface SimpleOptions extends MqttOptions {
     step: number;
     offValue: string;
     onValue: string;
+    buttonValue: string; // payload sent when in Button mode
   };
 }

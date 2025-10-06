@@ -82,6 +82,14 @@ export const plugin = new PanelPlugin<SimpleOptions>(MqttPanel).setPanelOptions(
         defaultValue: 'true',
         showIf: (v) => v.mode === 'Switch',
       })
+      // Button settings
+      .addTextInput({
+        path: 'model.buttonValue',
+        name: 'Button payload',
+        description: 'Payload published when the button is clicked',
+        defaultValue: '1',
+        showIf: (v) => v.mode === 'Button',
+      })
 
       // MQTT connection
       .addRadio({
