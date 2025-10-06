@@ -203,14 +203,21 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     options.model?.step,
   ]);
 
+  // Destructure frequently used option values for stable dependency arrays
+  const receiveOnly = options.receiveOnly;
+  const mode = options.mode;
+  const onValue = options.model?.onValue;
+  const offValue = options.model?.offValue;
+  const buttonValue = (options as any).model?.buttonValue ?? (options as any).buttonValue; // optional custom button payload
+
   const publish = useCallback(() => {
-    if (!clientRef.current || !connected || !publishTopic || options.receiveOnly) {
+    if (!clientRef.current || !connected || !publishTopic || receiveOnly) {
       return;
     }
 
     let payload: string;
 
-    switch (options.mode) {
+    switch (mode) {
       case 'Text': {
         const v = typeof stagedValue === 'string' ? stagedValue : String(stagedValue);
         payload = v;
@@ -221,16 +228,15 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         break;
       }
       case 'Switch': {
-        const onVal = options.model?.onValue ?? '1';
-        const offVal = options.model?.offValue ?? '0';
+        const onVal = onValue ?? '1';
+        const offVal = offValue ?? '0';
         payload = Boolean(stagedValue) ? String(onVal) : String(offVal);
         break;
       }
       case 'Button':
       default: {
         // Allow payload customization via (unsafe) optional fields not in typed interface.
-        const btn = (options as any).model?.buttonValue ?? (options as any).buttonValue ?? '1';
-        payload = String(btn);
+        payload = String(buttonValue ?? '1');
         break;
       }
     }
@@ -242,17 +248,7 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     });
     setLastSent(payload);
     setEchoed(false);
-  }, [
-    clientRef,
-    connected,
-    publishTopic,
-    options.receiveOnly,
-    options.mode,
-    stagedValue,
-    options.model?.onValue,
-    options.model?.offValue,
-    log,
-  ]);
+  }, [connected, publishTopic, receiveOnly, mode, stagedValue, onValue, offValue, buttonValue, log]);
 
   const controls = useMemo(() => {
     switch (options.mode) {
