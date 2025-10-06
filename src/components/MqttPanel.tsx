@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PanelProps } from '@grafana/data';
 import { SimpleOptions } from 'types';
 import { css, cx } from '@emotion/css';
-import { useStyles2, Button, InlineField, InlineFieldRow, Input, Slider, Switch, Badge } from '@grafana/ui';
+import { useStyles2, Button, InlineFieldRow, Input, Slider, Switch, Badge } from '@grafana/ui';
 import { PanelDataErrorView } from '@grafana/runtime';
 declare const require: any;
 type IClientOptions = any;
@@ -228,8 +228,9 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
       }
       case 'Button':
       default: {
-        // Use a simple default payload for button mode
-        payload = '1';
+        // Allow payload customization via (unsafe) optional fields not in typed interface.
+        const btn = (options as any).model?.buttonValue ?? (options as any).buttonValue ?? '1';
+        payload = String(btn);
         break;
       }
     }
@@ -278,39 +279,35 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
         const current = Number(stagedValue);
         return (
           <InlineFieldRow>
-            <InlineField label={`${options.model?.text || 'Value'}: ${current}`} grow>
-              <Slider
-                min={min}
-                max={max}
-                step={step}
-                value={current}
-                onChange={(v) => setStagedValue(v)}
-              />
-            </InlineField>
+            {/* Slider only, no left label box */}
+            <Slider
+              min={min}
+              max={max}
+              step={step}
+              value={current}
+              onChange={(v) => setStagedValue(v)}
+            />
             <Button onClick={publish} disabled={!connected || !publishTopic}>
               {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
       }
-
       case 'Switch': {
         const checked = Boolean(stagedValue);
         return (
           <InlineFieldRow>
-            <InlineField label={options.model?.text || options.text || 'Toggle'}>
-              <Switch
-                value={checked}
-                onChange={(e) => setStagedValue(e.currentTarget.checked)}
-              />
-            </InlineField>
+            {/* Switch only, no left label box */}
+            <Switch
+              value={checked}
+              onChange={(e) => setStagedValue(e.currentTarget.checked)}
+            />
             <Button onClick={publish} disabled={!connected || !publishTopic}>
               {options.model?.text || options.text || 'Send'}
             </Button>
           </InlineFieldRow>
         );
       }
-
       case 'Button':
       default: {
         return (
@@ -379,6 +376,9 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
           </div>
         </div>
       )}
+    </div>
+  );
+};
     </div>
   );
 };
