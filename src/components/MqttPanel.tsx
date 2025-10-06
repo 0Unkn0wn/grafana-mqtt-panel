@@ -379,6 +379,3 @@ export const MqttPanel: React.FC<Props> = ({ options, data, fieldConfig, id, wid
     </div>
   );
 };
-    </div>
-  );
-};
